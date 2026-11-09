@@ -1,4 +1,3 @@
-
 """
 Immaculate Automation Solutions (IAS)
 Transaction Categorization Engine
@@ -305,3 +304,52 @@ if __name__ == "__main__":
     print("\nCategory counts:", results["category_counts"])
     print("Transactions processed:", results["total_categorized"])
     print("Requiring review:", results["review_required"])
+
+
+# --------------------------------------------------
+# IAS MEMORY-INTEGRATED CATEGORIZATION
+# --------------------------------------------------
+
+from feedback_memory import FeedbackMemory
+
+
+def categorize_with_memory(
+    transactions,
+    profile,
+    memory_path
+):
+    """
+    Categorize transactions using approved memory
+    before falling back to default category rules.
+    """
+
+    memory = FeedbackMemory(memory_path)
+    categorized = []
+
+    for transaction in transactions:
+
+        remembered = memory.apply_memory(
+            transaction, profile
+        )
+
+        if remembered is not None:
+            result = remembered.copy()
+
+            # Financially sensitive categories still
+            # require human review.
+            if result["category"] in REVIEW_CATEGORIES:
+                result["review_required"] = True
+                result["reason"] = (
+                    "Remembered category requires "
+                    "financial review."
+                )
+
+        else:
+            result = categorize_transaction(
+                transaction, profile
+            )
+            result["source"] = "default_rules"
+
+        categorized.append(result)
+
+    return categorized
